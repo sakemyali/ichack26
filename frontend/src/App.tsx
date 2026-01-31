@@ -18,20 +18,25 @@ export default function App() {
   const mouseDownPos = useRef<Cartesian2 | null>(null);
   const isDragging = useRef(false);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
+  const [isReadyToClear, setIsReadyToClear] = useState(false);
   const [currentPolygonVertices, setCurrentPolygonVertices] = useState<PolygonCoords>([]);
   const [hasCompletedPolygon, setHasCompletedPolygon] = useState<boolean>(false);
   const [areaName, setAreaName] = useState("");
   const dragThreshold = 5; // pixels
 
   const handleStartDrawClick = () => {
-    console.log("Clicked 'draw polygon' button.");
+    console.log("Clicked polygon button.");
 
-    // Clear only when "start" is clicked AND existing polygon
-    if (!isDrawing && currentPolygonVertices.length > 1) {
+    // CASE 1: User clicks X → clear polygon
+    if (isReadyToClear) {
       setCurrentPolygonVertices([]);
       setHasCompletedPolygon(false);
+      setIsReadyToClear(false);
+      setIsDrawing(false);
+      return;
     }
 
+    // CASE 2: User clicks check → finish polygon
     if (isDrawing) {
       if (currentPolygonVertices.length > 2) {
         const finalPolygon = [
@@ -40,19 +45,22 @@ export default function App() {
         ] as PolygonCoords;
 
         fetchAreaName(finalPolygon).then(name => {
+          setIsReadyToClear(true); // show X button
           setAreaName(name);
           setCurrentPolygonVertices(finalPolygon);
           setHasCompletedPolygon(true);
+          setIsDrawing(false);
         });
       }
+
+      return;
     }
 
-    setIsDrawing(!isDrawing);
-
-    if (currentPolygonVertices.length > 0) {
-      console.log(
-        `Completed vertex: ${JSON.stringify(currentPolygonVertices)}`
-      );
+    // CASE 3: User clicks pencil → start drawing
+    if (!isDrawing) {
+      setCurrentPolygonVertices([]);
+      setHasCompletedPolygon(false);
+      setIsDrawing(true);
     }
   };
 
@@ -85,8 +93,6 @@ export default function App() {
 
     handleAddPolygonVertex(carto);
   };
-
-
 
   return (
     <main className="flex flex-row h-screen">
@@ -169,6 +175,7 @@ export default function App() {
 
       <DrawPolygonButton
         isDrawing={isDrawing}
+        isReadyToClear={isReadyToClear}
         clickHandler={handleStartDrawClick}
       />
 
