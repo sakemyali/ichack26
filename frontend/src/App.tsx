@@ -1,6 +1,6 @@
 import { Cartesian2, Cartesian3, Cartographic, Color, Ion, ScreenSpaceEventType } from "cesium";
 import { useRef, useState } from "react";
-import { Entity, PointGraphics, PolygonGraphics, PolylineGraphics, ScreenSpaceEvent, ScreenSpaceEventHandler, type CesiumComponentRef } from "resium";
+import { CameraFlyTo, Entity, PointGraphics, PolygonGraphics, PolylineGraphics, ScreenSpaceEvent, ScreenSpaceEventHandler, type CesiumComponentRef } from "resium";
 import { Viewer as ResiumViewer, } from "resium"
 import { Viewer as CesiumViewer } from "cesium";
 import { Math as CesiumMath } from "cesium";
@@ -12,39 +12,43 @@ type PolygonCoords = Cartographic[]
 
 export default function App() {
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
-  const [isDrawingPolygon, setIsDrawingPolygon] = useState<boolean>(false);
-  const [drawnPolygonVertices, setDrawnPolygonVertices] = useState<PolygonCoords>([]);
+  const [isDrawing, setIsDrawing] = useState<boolean>(false);
+  const [allPolygonVertices, setAllPolygonVertices] = useState<PolygonCoords[]>([]);
+  const [currentPolygonVertices, setCurrentPolygonVertices] = useState<PolygonCoords>([]);
 
   const handleStartDrawClick = () => {
     console.log("Clicked 'draw polygon' button.")
 
     // Clear only when "start" is clicked AND existing polygon
-    if (!isDrawingPolygon && drawnPolygonVertices.length > 1) {
-      setDrawnPolygonVertices([])
+    if (!isDrawing && currentPolygonVertices.length > 1) {
+      setAllPolygonVertices(prev =>
+        [...prev, currentPolygonVertices] as unknown as PolygonCoords[]
+      );
+      setCurrentPolygonVertices([])
     }
 
-    setIsDrawingPolygon(!isDrawingPolygon)
+    setIsDrawing(!isDrawing)
 
     // Connect lines when done
-    if (isDrawingPolygon && drawnPolygonVertices.length > 2) {
-      setDrawnPolygonVertices(prev =>
-        [...prev, drawnPolygonVertices[0]] as unknown as PolygonCoords
+    if (isDrawing && currentPolygonVertices.length > 2) {
+      setCurrentPolygonVertices(prev =>
+        [...prev, currentPolygonVertices[0]] as unknown as PolygonCoords
       );
     }
-    if (drawnPolygonVertices.length > 0) {
-      console.log(`Completed vertex: ${JSON.stringify(drawnPolygonVertices)}`)
+    if (currentPolygonVertices.length > 0) {
+      console.log(`Completed vertex: ${JSON.stringify(currentPolygonVertices)}`)
     }
   }
 
   const handleAddPolygonVertex = (point: Cartographic) => {
     console.log(`Added vertex at ${point}`)
-    setDrawnPolygonVertices(prev =>
+    setCurrentPolygonVertices(prev =>
       [...prev, point] as unknown as PolygonCoords
     );
   };
 
   const handleMapLeftClick = (e: { position: Cartesian2 }) => {
-    if (!isDrawingPolygon) return;
+    if (!isDrawing) return;
 
     if (!viewerRef.current?.cesiumElement) return;
 
@@ -68,7 +72,7 @@ export default function App() {
 
   const toCartesianArray = (coords: PolygonCoords) => {
     return coords.map(c =>
-      Cartesian3.fromDegrees(c.longitude, c.latitude)
+      Cartesian3.fromDegrees(c.longitude, c.latitude, c.height)
     );
   };
 
@@ -79,9 +83,9 @@ export default function App() {
       <div className="flex flex-col items-center align-middle">
         <h1 className="my-10">Sidebar</h1>
         <button className="my-10 hover:cursor-pointer" onClick={handleStartDrawClick}>
-          <p>{`${isDrawingPolygon ? "Finish drawing" : "Start drawing"}`}</p>
+          <p>{`${isDrawing ? "Finish drawing" : "Start drawing"}`}</p>
         </button>
-        <p className="text-center">{`Drawing? ${isDrawingPolygon}`}</p>
+        <p className="text-center">{`Drawing? ${isDrawing}`}</p>
       </div>
 
       {/* Cesium viewer */}
@@ -100,12 +104,17 @@ export default function App() {
         fullscreenButton={false}
         vrButton={false}
       >
+        <CameraFlyTo
+          once={true}
+          destination={Cartesian3.fromDegrees(-0.1276, 51.5072, 50000.0)}
+        />
+
         <ScreenSpaceEventHandler>
           <ScreenSpaceEvent type={ScreenSpaceEventType.LEFT_DOWN} action={(e) => handleMapLeftClick((e as { position: Cartesian2 }))} />
         </ScreenSpaceEventHandler>
 
         {/* Polygon vertices */}
-        {drawnPolygonVertices.map((v, i) => (
+        {currentPolygonVertices.map((v, i) => (
           <Entity
             key={i}
             position={Cartesian3.fromDegrees(v.longitude, v.latitude)}
@@ -119,11 +128,11 @@ export default function App() {
           </Entity>
         ))}
 
-        Polygon lines
-        {drawnPolygonVertices.length >= 2 && (
+        {/* Polygon lines */}
+        {currentPolygonVertices.length >= 2 && (
           <Entity>
             <PolylineGraphics
-              positions={toCartesianArray(drawnPolygonVertices)}
+              positions={toCartesianArray(currentPolygonVertices)}
               width={3}
               material={Color.CYAN}
             />
@@ -131,14 +140,24 @@ export default function App() {
         )}
 
         {/* Polygon fill */}
-        {drawnPolygonVertices.length >= 3 && (
+        {currentPolygonVertices.length >= 3 && (
           <Entity>
             <PolygonGraphics
-              hierarchy={toCartesianArray(drawnPolygonVertices)}
+              hierarchy={toCartesianArray(currentPolygonVertices)}
               material={Color.RED.withAlpha(0.4)}
             />
           </Entity>
         )}
+        {allPolygonVertices.map((polygon) => {
+          return (
+            <Entity>
+              <PolygonGraphics
+                hierarchy={toCartesianArray(polygon)}
+                material={Color.RED.withAlpha(0.4)}
+              />
+            </Entity>
+          )
+        })}
       </ResiumViewer>
     </main>
   );
