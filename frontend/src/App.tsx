@@ -8,43 +8,43 @@ import { Math as CesiumMath } from "cesium";
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ACCESS_TOKEN;
 
-type RectangleCoords = Cartographic[]
+type PolygonCoords = Cartographic[]
 
 export default function App() {
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
-  const [isDrawingRectangle, setIsDrawingRectangle] = useState<boolean>(false);
-  const [drawnRectangleVertices, setDrawnRectangleVertices] = useState<RectangleCoords>([]);
+  const [isDrawingPolygon, setIsDrawingPolygon] = useState<boolean>(false);
+  const [drawnPolygonVertices, setDrawnPolygonVertices] = useState<PolygonCoords>([]);
 
   const handleStartDrawClick = () => {
-    console.log("Clicked 'draw rectangle' button.")
+    console.log("Clicked 'draw polygon' button.")
 
     // Clear only when "start" is clicked AND existing polygon
-    if (!isDrawingRectangle && drawnRectangleVertices.length > 1) {
-      setDrawnRectangleVertices([])
+    if (!isDrawingPolygon && drawnPolygonVertices.length > 1) {
+      setDrawnPolygonVertices([])
     }
 
-    setIsDrawingRectangle(!isDrawingRectangle)
+    setIsDrawingPolygon(!isDrawingPolygon)
 
     // Connect lines when done
-    if (isDrawingRectangle && drawnRectangleVertices.length > 2) {
-      setDrawnRectangleVertices(prev =>
-        [...prev, drawnRectangleVertices[0]] as unknown as RectangleCoords
+    if (isDrawingPolygon && drawnPolygonVertices.length > 2) {
+      setDrawnPolygonVertices(prev =>
+        [...prev, drawnPolygonVertices[0]] as unknown as PolygonCoords
       );
     }
-    if (drawnRectangleVertices.length > 0) {
-      console.log(`Completed vertex: ${JSON.stringify(drawnRectangleVertices)}`)
+    if (drawnPolygonVertices.length > 0) {
+      console.log(`Completed vertex: ${JSON.stringify(drawnPolygonVertices)}`)
     }
   }
 
-  const handleAddRectangleVertex = (point: Cartographic) => {
+  const handleAddPolygonVertex = (point: Cartographic) => {
     console.log(`Added vertex at ${point}`)
-    setDrawnRectangleVertices(prev =>
-      [...prev, point] as unknown as RectangleCoords
+    setDrawnPolygonVertices(prev =>
+      [...prev, point] as unknown as PolygonCoords
     );
   };
 
   const handleMapLeftClick = (e: { position: Cartesian2 }) => {
-    if (!isDrawingRectangle) return;
+    if (!isDrawingPolygon) return;
 
     if (!viewerRef.current?.cesiumElement) return;
 
@@ -63,10 +63,10 @@ export default function App() {
     carto.longitude = CesiumMath.toDegrees(carto.longitude);
     carto.latitude = CesiumMath.toDegrees(carto.latitude);
 
-    handleAddRectangleVertex(carto);
+    handleAddPolygonVertex(carto);
   };
 
-  const toCartesianArray = (coords: RectangleCoords) => {
+  const toCartesianArray = (coords: PolygonCoords) => {
     return coords.map(c =>
       Cartesian3.fromDegrees(c.longitude, c.latitude)
     );
@@ -79,9 +79,9 @@ export default function App() {
       <div className="flex flex-col items-center align-middle">
         <h1 className="my-10">Sidebar</h1>
         <button className="my-10 hover:cursor-pointer" onClick={handleStartDrawClick}>
-          <p>{`${isDrawingRectangle ? "Finish drawing" : "Start drawing"}`}</p>
+          <p>{`${isDrawingPolygon ? "Finish drawing" : "Start drawing"}`}</p>
         </button>
-        <p className="text-center">{`Drawing? ${isDrawingRectangle}`}</p>
+        <p className="text-center">{`Drawing? ${isDrawingPolygon}`}</p>
       </div>
 
       {/* Cesium viewer */}
@@ -105,10 +105,10 @@ export default function App() {
         </ScreenSpaceEventHandler>
 
         {/* Polygon lines */}
-        {drawnRectangleVertices.length >= 2 && (
+        {drawnPolygonVertices.length >= 2 && (
           <Entity>
             <PolylineGraphics
-              positions={toCartesianArray(drawnRectangleVertices)}
+              positions={toCartesianArray(drawnPolygonVertices)}
               width={3}
               material={Color.CYAN}
             />
@@ -116,10 +116,10 @@ export default function App() {
         )}
 
         {/* Polygon fill */}
-        {drawnRectangleVertices.length >= 3 && (
+        {drawnPolygonVertices.length >= 3 && (
           <Entity>
             <PolygonGraphics
-              hierarchy={toCartesianArray(drawnRectangleVertices)}
+              hierarchy={toCartesianArray(drawnPolygonVertices)}
               material={Color.RED.withAlpha(0.4)}
             />
           </Entity>
