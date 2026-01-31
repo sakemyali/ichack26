@@ -7,7 +7,7 @@ import { Math as CesiumMath } from "cesium";
 import { SidebarActive } from "@/components/sidebar-active";
 import { SidebarInactive } from "@/components/sidebar-inactive";
 import type { PolygonCoords } from "@/lib/types";
-import { fetchAreaName } from "@/lib/api";
+import { fetchAreaName, sendPolygonToBackend } from "@/lib/api";
 import DrawPolygonButton from "@/components/draw-polygon-button";
 import ResiumPolygonDraw from "./components/resium-polygon-draw";
 
@@ -50,7 +50,17 @@ export default function App() {
           setCurrentPolygonVertices(finalPolygon);
           setHasCompletedPolygon(true);
           setIsDrawing(false);
+
+          console.log(finalPolygon)
+
+          sendPolygonToBackend(finalPolygon)
+            .then(resp => console.log("Saved polygon:", resp))
+            .catch(err => console.error("Backend error:", err));
         });
+      } else {
+        setIsDrawing(false);
+        setIsReadyToClear(false);
+        setHasCompletedPolygon(false);
       }
 
       return;
@@ -176,6 +186,7 @@ export default function App() {
       <DrawPolygonButton
         isDrawing={isDrawing}
         isReadyToClear={isReadyToClear}
+        vertexCount={currentPolygonVertices.length}
         clickHandler={handleStartDrawClick}
       />
 
