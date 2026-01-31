@@ -1,6 +1,6 @@
 import { Cartesian2, Cartesian3, Cartographic, Color, Ion, ScreenSpaceEventType } from "cesium";
 import { useRef, useState } from "react";
-import { Entity, PolygonGraphics, PolylineGraphics, ScreenSpaceEvent, ScreenSpaceEventHandler, type CesiumComponentRef } from "resium";
+import { Entity, PointGraphics, PolygonGraphics, PolylineGraphics, ScreenSpaceEvent, ScreenSpaceEventHandler, type CesiumComponentRef } from "resium";
 import { Viewer as ResiumViewer, } from "resium"
 import { Viewer as CesiumViewer } from "cesium";
 import { Math as CesiumMath } from "cesium";
@@ -104,7 +104,22 @@ export default function App() {
           <ScreenSpaceEvent type={ScreenSpaceEventType.LEFT_DOWN} action={(e) => handleMapLeftClick((e as { position: Cartesian2 }))} />
         </ScreenSpaceEventHandler>
 
-        {/* Polygon lines */}
+        {/* Polygon vertices */}
+        {drawnPolygonVertices.map((v, i) => (
+          <Entity
+            key={i}
+            position={Cartesian3.fromDegrees(v.longitude, v.latitude)}
+          >
+            <PointGraphics
+              pixelSize={10}
+              color={Color.YELLOW}
+              outlineColor={Color.BLACK}
+              outlineWidth={2}
+            />
+          </Entity>
+        ))}
+
+        Polygon lines
         {drawnPolygonVertices.length >= 2 && (
           <Entity>
             <PolylineGraphics
