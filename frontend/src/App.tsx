@@ -4,21 +4,16 @@ import { CameraFlyTo, Entity, PointGraphics, PolygonGraphics, PolylineGraphics, 
 import { Viewer as ResiumViewer, } from "resium"
 import { Viewer as CesiumViewer } from "cesium";
 import { Math as CesiumMath } from "cesium";
-import { Button } from "./components/ui/button";
-import { Check, Pencil } from "lucide-react";
 import { SidebarActive } from "./components/sidebar-active";
 import { SidebarInactive } from "./components/sidebar-inactive";
+import type { PolygonCoords } from "./lib/types";
+import { fetchAreaName } from "./lib/api";
+import DrawPolygonButton from "./components/draw-polygon-button";
 
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ACCESS_TOKEN;
 
-type PolygonCoords = Cartographic[]
 
-interface OSMAddress {
-  country?: string
-  ocean?: string
-  sea?: string
-}
 
 export default function App() {
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
@@ -28,39 +23,7 @@ export default function App() {
   const [currentPolygonVertices, setCurrentPolygonVertices] = useState<PolygonCoords>([]);
   const [hasCompletedPolygon, setHasCompletedPolygon] = useState<boolean>(false);
   const [areaName, setAreaName] = useState("");
-
   const dragThreshold = 5; // pixels
-
-
-  function getBestName(address: OSMAddress) {
-    return (
-      address.country ||
-      address.ocean ||
-      address.sea ||
-      "???"
-    );
-  }
-
-  function getCentroid(coords: PolygonCoords) {
-    const lon = coords.reduce((sum, c) => sum + c.longitude, 0) / coords.length;
-    const lat = coords.reduce((sum, c) => sum + c.latitude, 0) / coords.length;
-    return { lat, lon };
-  }
-
-  async function fetchAreaName(coords: PolygonCoords) {
-    const { lat, lon } = getCentroid(coords);
-
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10&addressdetails=1`;
-
-    const res = await fetch(url, {
-      headers: { "User-Agent": "ICHack26/1.0" }
-    });
-
-    const data = await res.json();
-
-    console.log(data.address)
-    return getBestName(data.address || {});
-  }
 
   const handleStartDrawClick = () => {
     console.log("Clicked 'draw polygon' button.");
@@ -78,7 +41,6 @@ export default function App() {
           currentPolygonVertices[0],
         ] as PolygonCoords;
 
-
         fetchAreaName(finalPolygon).then(name => {
           setAreaName(name);
           setCurrentPolygonVertices(finalPolygon);
@@ -86,7 +48,6 @@ export default function App() {
         });
       }
     }
-
 
     setIsDrawing(!isDrawing);
 
@@ -245,23 +206,7 @@ export default function App() {
         )}
       </ResiumViewer>
 
-      <Button
-        onClick={handleStartDrawClick}
-        size="icon-lg"
-        className={`absolute bottom-6 right-6 size-14 rounded-full shadow-lg transition-al ${isDrawing
-          ? "bg-emerald-500 hover:bg-emerald-600"
-          : "bg-white hover:bg-primary/90"
-          }`}
-      >
-        {isDrawing ? (
-          <Check className="size-6" color="white" />
-        ) : (
-          <Pencil className="size-6" />
-        )}
-        <span className="sr-only">
-          {isDrawing ? "Finish drawing" : "Start drawing"}
-        </span>
-      </Button>
+      <DrawPolygonButton isDrawing clickHandler={handleStartDrawClick} />
     </main>
   );
 }
