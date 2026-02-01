@@ -14,8 +14,11 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Expose port 5173 (default Vite dev server port)
+# Build for production
+RUN pnpm build
+
+# Expose port 5173 (default Vite preview port)
 EXPOSE 5173
 
-# Run Vite dev server with host exposed
-CMD ["pnpm", "dev", "--host", "0.0.0.0"]
+# Serve production build
+CMD ["pnpm", "preview", "--host", "0.0.0.0", "--port", "5173"]

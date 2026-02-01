@@ -24,5 +24,5 @@ COPY . .
 # Expose port 8001
 EXPOSE 8001
 
-# Run uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+# Run uvicorn (production mode without reload)
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "2"]
