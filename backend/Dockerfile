@@ -1,33 +1,32 @@
-# From https://dev.to/ismaarce/scalable-python-backend-building-a-containerized-fastapi-application-with-uv-docker-and-172j
-
-FROM python:3.11-slim
+FROM python:3.9-slim
 
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
-
-ENV UV_COMPILE_BYTE=1
-
-ENV UV_LINK_MODE=copy
-
-# Change the working directory to the `app` directory
 WORKDIR /app
 
-ENV PATH="/app/.venv/bin:$PATH"
+# Install system dependencies for numpy, rasterio, and other packages
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    gdal-bin \
+    libgdal-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY ./pyproject.toml ./uv.lock ./.python-version /app/
+# Set GDAL environment variables
+ENV GDAL_CONFIG=/usr/bin/gdal-config
 
-# Install dependencies
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+# Copy requirements first for better caching
+COPY requirements.txt .
 
-# Copy the project into the image
-COPY ./app /app/app
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Sync the project
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+# Copy the backend code
+COPY app /app/app
 
-CMD ["fastapi", "dev", "app/main.py", "--host", "0.0.0.0"]
+# Expose port 8001
+EXPOSE 8001
+
+# Run uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]

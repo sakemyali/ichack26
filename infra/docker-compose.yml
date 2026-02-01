@@ -10,7 +10,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
 
   pgweb:
     image: sosedoff/pgweb
@@ -30,15 +30,36 @@ services:
     container_name: hackathon_backend
     restart: unless-stopped
     ports:
-      - "8000:80"
+      - "8001:8001"
     environment:
       DATABASE_URL: postgresql+psycopg://app:app@db:5432/app
       ENV: dev
     depends_on:
       - db
     volumes:
-      - ../backend:/server
-    working_dir: /server
+      - ../backend/app:/app/app
+      - ../crop_predict:/app/crop_predict
+      - ../groa-mapping:/app/groa-mapping
+
+  middleware:
+    build:
+      context: ../middleware
+      dockerfile: Dockerfile
+    container_name: hackathon_middleware
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      BACKEND_URL: http://backend:8001
+    env_file:
+      - ../middleware/.env
+    depends_on:
+      - backend
+    volumes:
+      - ../middleware:/app
+      - ../backend/app:/app/backend_app
+      - ../crop_predict:/app/crop_predict
+      - ../groa-mapping:/app/groa-mapping
 
 volumes:
   db_data:
