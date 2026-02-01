@@ -10,10 +10,11 @@ from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Add backend/app to Python path to import crop_predict
-BACKEND_APP_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../backend/app"))
-if BACKEND_APP_PATH not in sys.path:
-    sys.path.insert(0, BACKEND_APP_PATH)
+# Add backend to Python path to import crop_predict
+# Backend is mounted at /app/backend in middleware container
+BACKEND_PATH = "/app/backend"
+if BACKEND_PATH not in sys.path:
+    sys.path.insert(0, BACKEND_PATH)
 
 
 async def predict_crop_yield(
@@ -48,16 +49,19 @@ async def predict_crop_yield(
         
         logger.info(f"🌾 Predicting {crop_name} yield at ({centroid_lat:.2f}, {centroid_lon:.2f}), week {week}")
         
-        # Call prediction function
+        # Backend is mounted at /app/backend in middleware container
+        backend_base = "/app/backend"
+        
+        # Call prediction function with absolute paths
         prediction = predict_yield(
             longitude=centroid_lon,
             latitude=centroid_lat,
             week=week,
             crop_name=crop_name,
-            model_path="crop_predict/model/rf_model.joblib",
-            le_path="crop_predict/model/label_encoder.joblib",
-            data_path="crop_predict/Model_A.csv",
-            feature_path="crop_predict/model/features.txt"
+            model_path=os.path.join(backend_base, "crop_predict/model/rf_model.joblib"),
+            le_path=os.path.join(backend_base, "crop_predict/model/label_encoder.joblib"),
+            data_path=os.path.join(backend_base, "crop_predict/Model_A.csv"),
+            feature_path=os.path.join(backend_base, "crop_predict/model/features.txt")
         )
         
         if prediction is None:

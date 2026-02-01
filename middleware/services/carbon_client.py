@@ -19,34 +19,65 @@ if BACKEND_APP_PATH not in sys.path:
 
 async def predict_carbon_sequestration(
     centroid_lon: float,
-    centroid_lat: float
+    centroid_lat: float,
+    polygon_coords: Optional[list] = None
 ) -> Optional[Dict]:
     """
     Predict carbon accumulation potential for forest regrowth
-    Uses GROA model with real-time weather and soil data
+    Uses GeoTIFF raster data if available, falls back to GROA ML model
     
     Args:
         centroid_lon: Polygon centroid longitude
         centroid_lat: Polygon centroid latitude
+        polygon_coords: Optional list of [lon, lat] coordinates for polygon analysis
     
     Returns:
         Dict with prediction results or None if prediction fails:
         {
             "carbon_rate_mg_ha_yr": float,  # Megagrams Carbon per hectare per year
             "location": [lon, lat],
-            "climate": {
-                "annual_mean_temp_c": float,
-                "annual_mean_precip_mm": float
-            },
-            "soil": {
-                "classification": str
-            },
-            "coverage": str,  # "global", "fallback", or "error"
+            "climate": dict or None,
+            "soil": dict or None,
+            "coverage": str,  # "raster", "global", "fallback", or "error"
             "error": str  # if prediction failed
         }
     """
     try:
-        # Import required modules from groa-mapping
+        logger.info(f"🌲 Predicting carbon sequestration at ({centroid_lat:.2f}, {centroid_lon:.2f})")
+        
+        # Try GeoTIFF raster analysis first (most accurate, pre-computed)
+        if polygon_coords and len(polygon_coords) >= 3:
+            try:
+                sys.path.insert(0, "/app/backend/groa-mapping/processing_scripts")
+                # Import from the actual filename
+                import importlib.util
+                spec = importlib.util.spec_from_file_location(
+                    "analyze_polygon",
+                    "/app/backend/groa-mapping/processing_scripts/10_analyze_polygon.py"
+                )
+                analyze_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(analyze_module)
+                analyze_polygon = analyze_module.analyze_polygon
+                
+                logger.info("Using GeoTIFF raster data for carbon analysis...")
+                result = analyze_polygon(polygon_coords)
+                
+                if result and "mean_rate" in result:
+                    logger.info(f"✅ Carbon from raster: {result['mean_rate']:.4f} Mg C ha⁻¹ yr⁻¹ (area: {result.get('area_ha', 0):.2f} ha)")
+                    return {
+                        "carbon_rate_mg_ha_yr": result["mean_rate"],
+                        "total_carbon_yr": result.get("total_carbon_yr"),
+                        "area_ha": result.get("area_ha"),
+                        "location": [centroid_lon, centroid_lat],
+                        "climate": None,
+                        "soil": None,
+                        "coverage": "raster",
+                        "error": None
+                    }
+            except Exception as e:
+                logger.warning(f"GeoTIFF analysis failed, falling back to ML model: {e}")
+        
+        # Fallback to ML model prediction (point-based)
         import pandas as pd
         import pickle
         import json
@@ -54,16 +85,28 @@ async def predict_carbon_sequestration(
         
         logger.info(f"🌲 Predicting carbon sequestration at ({centroid_lat:.2f}, {centroid_lon:.2f})")
         
-        # Load model
-        model_path = os.path.join(BACKEND_APP_PATH, "groa-mapping/outputs/groa_model.pkl")
-        if not os.path.exists(model_path):
-            logger.error("GROA model not found")
+        # Load model - backend is mounted at /app/backend in middleware container
+        model_paths = [
+            "/app/backend/groa-mapping/outputs/groa_model.pkl",  # Old location (pre-trained)
+            "/app/backend/outputs/groa_model.pkl",  # New location
+            "/app/backend/MappingGlobalCarbon/outputs/groa_model.pkl",  # Alternative
+        ]
+        
+        model_path = None
+        for path in model_paths:
+            if os.path.exists(path):
+                model_path = path
+                logger.info(f"Found GROA model at: {path}")
+                break
+        
+        if not model_path:
+            logger.error(f"GROA model not found in any of: {model_paths}")
             return {
                 "carbon_rate_mg_ha_yr": None,
                 "location": [centroid_lon, centroid_lat],
                 "climate": None,
                 "soil": None,
-                "coverage": "error",
+                "coverage": "unavailable",
                 "error": "GROA model not found. Run training script first."
             }
         
