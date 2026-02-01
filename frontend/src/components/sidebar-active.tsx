@@ -1,4 +1,3 @@
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { EmptySidebar } from "./sidebar-empty";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
@@ -55,12 +54,64 @@ export function SidebarActive({ data, area }: SidebarActiveProps) {
                             <span className="text-muted-foreground">Area (Hectares)</span>
                             <span className="font-medium">{data.polygon.properties.area_hectares.toFixed(2)} ha</span>
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">High Risk Hotspots</span>
-                            <span className="font-medium text-orange-600">{data.num_hotspots}</span>
-                        </div>
                     </CardContent>
                 </Card>
+
+                {/* Carbon Sequestration */}
+                {data.carbon_sequestration && !data.carbon_sequestration.error && data.carbon_sequestration.carbon_rate_mg_ha_yr != null && (
+                    <Card className="mb-4">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm">Carbon Sequestration</CardTitle>
+                            {data.carbon_sequestration.soil?.classification && (
+                                <CardDescription className="text-xs">
+                                    {data.carbon_sequestration.soil.classification}
+                                </CardDescription>
+                            )}
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Sequestration Rate</span>
+                                <span className="font-medium">
+                                    {data.carbon_sequestration.carbon_rate_mg_ha_yr.toFixed(2)} Mg/ha/yr
+                                </span>
+                            </div>
+                            {data.carbon_sequestration.total_carbon_yr != null && (
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Total Sequestration</span>
+                                    <span className="font-medium">
+                                        {data.carbon_sequestration.total_carbon_yr.toFixed(2)} Mg/yr
+                                    </span>
+                                </div>
+                            )}
+                            {data.carbon_sequestration.area_ha != null && (
+                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>Analysis Area</span>
+                                    <span>{data.carbon_sequestration.area_ha.toFixed(2)} ha</span>
+                                </div>
+                            )}
+                            {data.carbon_sequestration.climate && (
+                                <>
+                                    <Separator className="my-2" />
+                                    <div className="space-y-1.5">
+                                        <h5 className="text-xs font-semibold">Climate Data</h5>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-muted-foreground">Annual Mean Temp</span>
+                                            <span className="font-medium">
+                                                {data.carbon_sequestration.climate.annual_mean_temp_c.toFixed(1)}°C
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-muted-foreground">Annual Precipitation</span>
+                                            <span className="font-medium">
+                                                {data.carbon_sequestration.climate.annual_mean_precip_mm.toFixed(0)} mm
+                                            </span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Soil Erosion Assessment */}
                 <Card className="mb-4">
@@ -178,46 +229,6 @@ export function SidebarActive({ data, area }: SidebarActiveProps) {
                     </CardContent>
                 </Card>
 
-                {/* Model Validation */}
-                <Card className="mb-4">
-                    <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm">Model Validation</CardTitle>
-                            {data.validation.model_valid ? (
-                                <Badge variant="secondary" className="text-xs">
-                                    <CheckCircle2 className="size-3 mr-1 text-emerald-500" />
-                                    Valid
-                                </Badge>
-                            ) : (
-                                <Badge variant="destructive" className="text-xs">
-                                    <AlertTriangle className="size-3 mr-1" />
-                                    Issues
-                                </Badge>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">High Veg Reduction</span>
-                            <span className="font-medium">{data.validation.high_veg_reduction_pct.toFixed(1)}%</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Flat Terrain Reduction</span>
-                            <span className="font-medium">{data.validation.flat_terrain_reduction_pct.toFixed(1)}%</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Bare Soil Increase</span>
-                            <span className="font-medium">{data.validation.bare_soil_increase_pct.toFixed(1)}%</span>
-                        </div>
-                        {data.validation.notes && (
-                            <>
-                                <Separator className="my-2" />
-                                <p className="text-xs text-muted-foreground">{data.validation.notes}</p>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-
                 {/* Crop Yield */}
                 {data.crop_yield && !data.crop_yield.error && data.crop_yield.yield_t_ha != null && (
                     <Card className="mb-4">
@@ -229,64 +240,6 @@ export function SidebarActive({ data, area }: SidebarActiveProps) {
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">Estimated Yield</span>
                                 <span className="font-medium">{data.crop_yield.yield_t_ha.toFixed(2)} t/ha</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Week</span>
-                                <span className="font-medium">Week {data.crop_yield.week}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Coverage</span>
-                                <Badge variant="outline" className="text-xs">
-                                    {data.crop_yield.coverage}
-                                </Badge>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Carbon Sequestration */}
-                {data.carbon_sequestration && !data.carbon_sequestration.error && data.carbon_sequestration.carbon_rate_mg_ha_yr != null && (
-                    <Card className="mb-4">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm">Carbon Sequestration</CardTitle>
-                            {data.carbon_sequestration.soil?.classification && (
-                                <CardDescription className="text-xs">
-                                    {data.carbon_sequestration.soil.classification}
-                                </CardDescription>
-                            )}
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Sequestration Rate</span>
-                                <span className="font-medium">
-                                    {data.carbon_sequestration.carbon_rate_mg_ha_yr.toFixed(2)} Mg/ha/yr
-                                </span>
-                            </div>
-                            {data.carbon_sequestration.climate && (
-                                <>
-                                    <Separator className="my-2" />
-                                    <div className="space-y-1.5">
-                                        <h5 className="text-xs font-semibold">Climate Data</h5>
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="text-muted-foreground">Annual Mean Temp</span>
-                                            <span className="font-medium">
-                                                {data.carbon_sequestration.climate.annual_mean_temp_c.toFixed(1)}°C
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="text-muted-foreground">Annual Precipitation</span>
-                                            <span className="font-medium">
-                                                {data.carbon_sequestration.climate.annual_mean_precip_mm.toFixed(0)} mm
-                                            </span>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                            <div className="flex items-center justify-between text-sm pt-1">
-                                <span className="text-muted-foreground">Coverage</span>
-                                <Badge variant="outline" className="text-xs">
-                                    {data.carbon_sequestration.coverage}
-                                </Badge>
                             </div>
                         </CardContent>
                     </Card>

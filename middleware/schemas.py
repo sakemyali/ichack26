@@ -369,6 +369,14 @@ class CarbonSequestration(BaseModel):
         None,
         description="Carbon accumulation rate in Mg C ha⁻¹ yr⁻¹"
     )
+    total_carbon_yr: Optional[float] = Field(
+        None,
+        description="Total carbon sequestration for entire polygon in Mg C yr⁻¹"
+    )
+    area_ha: Optional[float] = Field(
+        None,
+        description="Polygon area in hectares used for carbon calculation"
+    )
     location: List[float] = Field(..., description="Centroid coordinates [lon, lat]")
     climate: Optional[Dict[str, float]] = Field(
         None,
@@ -378,16 +386,14 @@ class CarbonSequestration(BaseModel):
         None,
         description="Soil classification data"
     )
-    coverage: str = Field(
-        ...,
-        description="Coverage status: 'global', 'fallback', 'unavailable', or 'error'"
-    )
     error: Optional[str] = Field(None, description="Error message if prediction failed")
     
     class Config:
         schema_extra = {
             "example": {
                 "carbon_rate_mg_ha_yr": 1.5514,
+                "total_carbon_yr": 1850.5,
+                "area_ha": 1200.0,
                 "location": [0.28, 51.51],
                 "climate": {
                     "annual_mean_temp_c": 10.9,
@@ -396,7 +402,6 @@ class CarbonSequestration(BaseModel):
                 "soil": {
                     "classification": "Luvisols"
                 },
-                "coverage": "global",
                 "error": None
             }
         }

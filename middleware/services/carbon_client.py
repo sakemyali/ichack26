@@ -71,7 +71,6 @@ async def predict_carbon_sequestration(
                         "location": [centroid_lon, centroid_lat],
                         "climate": None,
                         "soil": None,
-                        "coverage": "raster",
                         "error": None
                     }
             except Exception as e:
@@ -103,10 +102,11 @@ async def predict_carbon_sequestration(
             logger.error(f"GROA model not found in any of: {model_paths}")
             return {
                 "carbon_rate_mg_ha_yr": None,
+                "total_carbon_yr": None,
+                "area_ha": None,
                 "location": [centroid_lon, centroid_lat],
                 "climate": None,
                 "soil": None,
-                "coverage": "unavailable",
                 "error": "GROA model not found. Run training script first."
             }
         
@@ -118,10 +118,11 @@ async def predict_carbon_sequestration(
             logger.error(f"Failed to load GROA model (sklearn/numpy version mismatch): {model_error}")
             return {
                 "carbon_rate_mg_ha_yr": None,
+                "total_carbon_yr": None,
+                "area_ha": None,
                 "location": [centroid_lon, centroid_lat],
                 "climate": None,
                 "soil": None,
-                "coverage": "error",
                 "error": f"Model loading failed: {str(model_error)}"
             }
         
@@ -184,6 +185,8 @@ async def predict_carbon_sequestration(
         
         return {
             "carbon_rate_mg_ha_yr": round(float(prediction), 4),
+            "total_carbon_yr": None,
+            "area_ha": None,
             "location": [centroid_lon, centroid_lat],
             "climate": {
                 "annual_mean_temp_c": round(amt, 1),
@@ -192,7 +195,6 @@ async def predict_carbon_sequestration(
             "soil": {
                 "classification": soil_type
             },
-            "coverage": "global",
             "error": None
         }
         
@@ -200,10 +202,11 @@ async def predict_carbon_sequestration(
         logger.error(f"Failed to import GROA dependencies: {e}")
         return {
             "carbon_rate_mg_ha_yr": None,
+            "total_carbon_yr": None,
+            "area_ha": None,
             "location": [centroid_lon, centroid_lat],
             "climate": None,
             "soil": None,
-            "coverage": "unavailable",
             "error": f"GROA module dependencies not available: {str(e)}"
         }
     
@@ -211,9 +214,10 @@ async def predict_carbon_sequestration(
         logger.error(f"Carbon prediction failed: {e}", exc_info=True)
         return {
             "carbon_rate_mg_ha_yr": None,
+            "total_carbon_yr": None,
+            "area_ha": None,
             "location": [centroid_lon, centroid_lat],
             "climate": None,
             "soil": None,
-            "coverage": "error",
             "error": str(e)
         }

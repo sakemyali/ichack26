@@ -42,6 +42,14 @@ async def predict_crop_yield(
         }
     """
     try:
+        # Check if location is in Europe
+        # Approximate Europe boundaries:
+        # Latitude: 35°N to 71°N
+        # Longitude: -10°W to 40°E
+        if not (35 <= centroid_lat <= 71 and -10 <= centroid_lon <= 40):
+            logger.info(f"🌾 Location ({centroid_lat:.2f}, {centroid_lon:.2f}) outside Europe - skipping crop prediction")
+            return None
+        
         # Import crop_predict module
         from crop_predict.predict import predict_yield
         
