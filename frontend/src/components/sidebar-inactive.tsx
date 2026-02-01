@@ -1,6 +1,6 @@
 import { EmptySidebar } from "./sidebar-empty";
 import { MapPin, Mouse, Layers, Info } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Separator } from "./ui/separator";
 
 export function SidebarInactive() {
     return (
@@ -9,7 +9,7 @@ export function SidebarInactive() {
         >
             <div className="space-y-4 pb-6">
                 {/* Quick Start Guide */}
-                <Card className="p-4 bg-white border-slate-200">
+                <div className="p-4 border-slate-200">
                     <div className="flex items-start gap-3">
                         <div className="p-2 bg-blue-50 rounded-lg">
                             <Mouse className="h-5 w-5 text-blue-600" />
@@ -21,10 +21,12 @@ export function SidebarInactive() {
                             </p>
                         </div>
                     </div>
-                </Card>
+                </div>
+
+                <Separator />
 
                 {/* Feature Info */}
-                <Card className="p-4 bg-white border-slate-200">
+                <div className="p-4 border-slate-200">
                     <div className="flex items-start gap-3">
                         <div className="p-2 bg-emerald-50 rounded-lg">
                             <Layers className="h-5 w-5 text-emerald-600" />
@@ -36,10 +38,12 @@ export function SidebarInactive() {
                             </p>
                         </div>
                     </div>
-                </Card>
+                </div>
+
+                <Separator />
 
                 {/* Analysis Info */}
-                <Card className="p-4 bg-white border-slate-200">
+                <div className="p-4 border-slate-200">
                     <div className="flex items-start gap-3">
                         <div className="p-2 bg-purple-50 rounded-lg">
                             <MapPin className="h-5 w-5 text-purple-600" />
@@ -51,29 +55,29 @@ export function SidebarInactive() {
                             </p>
                         </div>
                     </div>
-                </Card>
+                </div>
+
+                <Separator />
 
                 {/* Tips */}
-                <div className="mt-6 pt-6 border-t border-slate-200">
-                    <div className="flex items-start gap-2">
-                        <Info className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                            <h4 className="font-medium text-slate-700 text-sm">Pro Tips</h4>
-                            <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
-                                <li className="flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>Click and drag to span and orbit the globe</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>Use the zoom controls to navigate large areas</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="mr-2">•</span>
-                                    <span>Export data in multiple formats (CSV, GeoJSON)</span>
-                                </li>
-                            </ul>
-                        </div>
+                <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                        <h4 className="font-medium text-slate-700 text-sm">Pro Tips</h4>
+                        <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+                            <li className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>Click and drag to span and orbit around the globe</span>
+                            </li>
+                            <li className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>Use the zoom controls to navigate large areas</span>
+                            </li>
+                            <li className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>Export data in multiple formats (CSV, GeoJSON)</span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>

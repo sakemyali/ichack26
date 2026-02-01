@@ -6,3 +6,8 @@ export interface OSMAddress {
     ocean?: string
     sea?: string
 }
+export interface DrawingState {
+    isDrawing: boolean
+    isClearable: boolean
+    isCompleted: boolean
+}

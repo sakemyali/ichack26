@@ -6,75 +6,140 @@ import { Viewer as CesiumViewer } from "cesium";
 import { Math as CesiumMath } from "cesium";
 import { SidebarActive } from "@/components/sidebar-active";
 import { SidebarInactive } from "@/components/sidebar-inactive";
-import type { PolygonCoords } from "@/lib/types";
+import type { DrawingState, PolygonCoords } from "@/lib/types";
 import { fetchAreaName, sendPolygonToBackend } from "@/lib/api";
-import DrawPolygonButton from "@/components/draw-polygon-button";
 import ResiumPolygonDraw from "./components/resium-polygon-draw";
 import { AlertDialogDemo } from "./components/intro-alert";
+import DrawButton from "./components/draw-button";
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ACCESS_TOKEN;
 
 export default function App() {
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
   const mouseDownPos = useRef<Cartesian2 | null>(null);
-  const isDragging = useRef(false);
-  const [isDrawing, setIsDrawing] = useState<boolean>(false);
-  const [isReadyToClear, setIsReadyToClear] = useState(false);
   const [currentPolygonVertices, setCurrentPolygonVertices] = useState<PolygonCoords>([]);
-  const [hasCompletedPolygon, setHasCompletedPolygon] = useState<boolean>(false);
+  const isDragging = useRef(false);
+  // const [isDrawing, setIsDrawing] = useState<boolean>(false);
+  // const [isReadyToClear, setIsReadyToClear] = useState(false);
+  // const [hasCompletedPolygon, setHasCompletedPolygon] = useState<boolean>(false);
+  const [drawingState, setDrawingState] = useState<DrawingState>({ isDrawing: false, isClearable: false, isCompleted: false });
   const [areaName, setAreaName] = useState("");
 
   const dragThreshold = 5; // pixels
 
-  const handleStartDrawClick = () => {
-    console.log("Clicked polygon button.");
-
-    // CASE 1: User clicks X → clear polygon
-    if (isReadyToClear) {
+  const handleStartDrawPolygon = () => {
+    // X is available, clear all
+    if (drawingState?.isClearable) {
+      console.log("X is available, clear all")
       setCurrentPolygonVertices([]);
-      setHasCompletedPolygon(false);
-      setIsReadyToClear(false);
-      setIsDrawing(false);
+      setDrawingState(
+        { isDrawing: false, isClearable: false, isCompleted: false }
+      )
       return;
     }
 
-    // CASE 2: User clicks check → finish polygon
-    if (isDrawing) {
+    // Drawing mode, confirm/clear based on # vertices
+    if (drawingState?.isDrawing) {
+      // Can we finish the polygon?
       if (currentPolygonVertices.length > 2) {
+        console.log("is drawing, >2 vertices")
+        // Get final polygon
         const finalPolygon = [
           ...currentPolygonVertices,
           currentPolygonVertices[0],
         ] as PolygonCoords;
 
         fetchAreaName(finalPolygon).then(name => {
-          setIsReadyToClear(true); // show X button
+          setDrawingState(prev => ({
+            ...prev,
+            isClearable: true
+          }));
+
           setAreaName(name);
           setCurrentPolygonVertices(finalPolygon);
-          setHasCompletedPolygon(true);
-          setIsDrawing(false);
 
-          console.log(finalPolygon)
+          setDrawingState({
+            isClearable: true,
+            isDrawing: true,
+            isCompleted: true
+          });
 
           sendPolygonToBackend(finalPolygon)
             .then(resp => console.log("Saved polygon:", resp))
             .catch(err => console.error("Backend error:", err));
         });
+
       } else {
-        setIsDrawing(false);
-        setIsReadyToClear(false);
-        setHasCompletedPolygon(false);
+        console.log("is drawing, but <2 vertices")
+        setDrawingState({
+          isClearable: false,
+          isDrawing: false,
+          isCompleted: false
+        })
+        setCurrentPolygonVertices([]);
       }
 
-      return;
+      return
     }
 
-    // CASE 3: User clicks pencil → start drawing
-    if (!isDrawing) {
+    // CASE 3: User clicks pencil -> start drawing
+    if (!drawingState.isDrawing) {
+      console.log("drawing!")
       setCurrentPolygonVertices([]);
-      setHasCompletedPolygon(false);
-      setIsDrawing(true);
+      setDrawingState(prev => ({
+        ...prev,
+        isDrawing: true,
+        isCompleted: false,
+      }));
     }
-  };
+  }
+
+  // const handleStartDrawRectangle = () => {
+  //   if (drawingState?.isDrawing) {
+  //     const last = currentPolygonVertices[currentPolygonVertices.length - 1];
+
+  //     const km = 500;
+
+  //     // convert km -> degrees
+  //     const kmToLatDeg = km / 111;
+  //     const kmToLonDeg = km / (111 * Math.cos(last.latitude));
+
+  //     // convert degrees -> radians
+  //     const kmToLatRad = kmToLatDeg * (Math.PI / 180);
+  //     const kmToLonRad = kmToLonDeg * (Math.PI / 180);
+
+  //     // build a square around the last point
+  //     const finalPolygon: PolygonCoords = [
+  //       new Cartographic(last.longitude - kmToLonRad, last.latitude + kmToLatRad), // top-left
+  //       new Cartographic(last.longitude + kmToLonRad, last.latitude + kmToLatRad), // top-right
+  //       new Cartographic(last.longitude + kmToLonRad, last.latitude - kmToLatRad), // bottom-right
+  //       new Cartographic(last.longitude - kmToLonRad, last.latitude - kmToLatRad), // bottom-left
+  //       new Cartographic(last.longitude - kmToLonRad, last.latitude + kmToLatRad), // close polygon
+  //     ];
+
+  //     setCurrentPolygonVertices(finalPolygon)
+
+  //     fetchAreaName(finalPolygon).then(name => {
+  //       setDrawingState(prev => ({
+  //         ...prev,
+  //         isClearable: true
+  //       }));
+
+  //       setAreaName(name);
+  //       setCurrentPolygonVertices(finalPolygon);
+
+  //       setDrawingState(prev => ({
+  //         ...prev,
+  //         isDrawing: true,
+  //         isCompleted: true
+  //       }));
+
+  //       sendPolygonToBackend(finalPolygon)
+  //         .then(resp => console.log("Saved polygon:", resp))
+  //         .catch(err => console.error("Backend error:", err));
+  //     });
+  //   }
+  // }
 
   const handleAddPolygonVertex = (point: Cartographic) => {
     console.log(`Added vertex at ${point}`)
@@ -84,7 +149,7 @@ export default function App() {
   };
 
   const handleMapLeftClick = (e: { position: Cartesian2 }) => {
-    if (!isDrawing) return;
+    if (!drawingState.isDrawing) return;
 
     if (!viewerRef.current?.cesiumElement) return;
 
@@ -113,7 +178,7 @@ export default function App() {
 
       {/* Sidebar */}
       {
-        hasCompletedPolygon ?
+        drawingState.isCompleted ?
           (
             <SidebarActive area={`Somewhere Around ${areaName}`} />
           ) :
@@ -171,7 +236,7 @@ export default function App() {
           <ScreenSpaceEvent
             type={ScreenSpaceEventType.LEFT_UP}
             action={(e) => {
-              if (!isDrawing) return;
+              if (!drawingState.isDrawing) return;
 
               if (!isDragging.current) {
                 handleMapLeftClick(e as { position: Cartesian2 });
@@ -187,11 +252,11 @@ export default function App() {
 
       </ResiumViewer>
 
-      <DrawPolygonButton
-        isDrawing={isDrawing}
-        isReadyToClear={isReadyToClear}
+      <DrawButton
+        drawingState={drawingState}
         vertexCount={currentPolygonVertices.length}
-        clickHandler={handleStartDrawClick}
+        startDrawingPolygon={handleStartDrawPolygon}
+      // startDrawingRectangle={handleStartDrawRectangle}
       />
 
     </main>
