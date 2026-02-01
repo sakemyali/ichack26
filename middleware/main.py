@@ -15,11 +15,20 @@ import logging
 from typing import Dict
 from dotenv import load_dotenv
 
-# Load environment variables from repo .env early so service modules (which may read
+# Load environment variables from middleware/.env early so service modules (which may read
 # env vars at import time) see credentials during local development.
-dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
+# Try middleware/.env first, then fall back to repo root .env
+middleware_env = os.path.join(os.path.dirname(__file__), ".env")
+root_env = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+if os.path.exists(middleware_env):
+    load_dotenv(middleware_env)
+    print(f"✅ Loaded .env from: {middleware_env}")
+elif os.path.exists(root_env):
+    load_dotenv(root_env)
+    print(f"✅ Loaded .env from: {root_env}")
+else:
+    print("⚠️  No .env file found")
 
 # FIXED: Correct imports
 import schemas
@@ -27,6 +36,8 @@ import validators
 import services.coordinate_parser as coordinate_parser
 import services.sentinel_client as sentinel_client
 import services.backend_client as backend_client
+import services.crop_client as crop_client
+import services.carbon_client as carbon_client
 
 # Configure logging
 logging.basicConfig(
@@ -226,10 +237,14 @@ async def compute_rusle(request: schemas.RUSLERequest) -> schemas.RUSLEResponse:
         "compute_sensitivities": request.options.compute_sensitivities
     }
     
+    # Extract centroid for crop and carbon predictions
+    centroid = validation_metadata.get('centroid', geojson['properties']['centroid'])
+    centroid_lon, centroid_lat = centroid[0], centroid[1]
+    
     try:
-        logger.info("Starting parallel tasks: satellite imagery + backend RUSLE/ML")
+        logger.info("Starting parallel tasks: satellite + backend RUSLE/ML + crop + carbon")
         
-        # Create async tasks
+        # Create async tasks for all services
         satellite_task = asyncio.create_task(
             sentinel_client.fetch_satellite_image(geojson, request.options.date_range)
         )
@@ -238,14 +253,57 @@ async def compute_rusle(request: schemas.RUSLERequest) -> schemas.RUSLEResponse:
             backend_client.call_backend_rusle(geojson, backend_options)  # FIXED: pass dict, not Pydantic model
         )
         
-        # Wait for both to complete
-        satellite_result, backend_result = await asyncio.gather(
-            satellite_task,
-            backend_task,
-            return_exceptions=False
+        crop_task = asyncio.create_task(
+            crop_client.predict_crop_yield(
+                centroid_lon=centroid_lon,
+                centroid_lat=centroid_lat,
+                week=25,  # Default to mid-season
+                crop_name="Soft wheat"
+            )
         )
         
-        logger.info("✅ Both parallel tasks completed successfully")
+        carbon_task = asyncio.create_task(
+            carbon_client.predict_carbon_sequestration(
+                centroid_lon=centroid_lon,
+                centroid_lat=centroid_lat
+            )
+        )
+        
+        # Wait for all to complete (allow exceptions for optional services)
+        results = await asyncio.gather(
+            satellite_task,
+            backend_task,
+            crop_task,
+            carbon_task,
+            return_exceptions=True  # FIXED: Don't fail if satellite/ML models fail
+        )
+        
+        satellite_result, backend_result, crop_result, carbon_result = results
+        
+        # Handle satellite failure gracefully
+        if isinstance(satellite_result, Exception):
+            logger.warning(f"Satellite imagery failed: {satellite_result}")
+            satellite_result = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="  # 1x1 transparent PNG
+        
+        # Handle backend failure
+        if isinstance(backend_result, Exception):
+            logger.error(f"Backend RUSLE failed: {backend_result}")
+            raise HTTPException(status_code=500, detail=f"RUSLE computation failed: {str(backend_result)}")
+        
+        # ML models are optional - log but don't fail
+        if isinstance(crop_result, Exception):
+            logger.warning(f"Crop prediction failed: {crop_result}")
+            crop_result = None
+        
+        if isinstance(carbon_result, Exception):
+            logger.warning(f"Carbon prediction failed: {carbon_result}")
+            carbon_result = None
+        
+        logger.info("✅ All parallel tasks completed")
+        if crop_result and crop_result.get('yield_t_ha'):
+            logger.info(f"   Crop yield: {crop_result.get('yield_t_ha')} t/ha ({crop_result.get('coverage')})")
+        if carbon_result and carbon_result.get('carbon_rate_mg_ha_yr'):
+            logger.info(f"   Carbon rate: {carbon_result.get('carbon_rate_mg_ha_yr')} Mg C/ha/yr ({carbon_result.get('coverage')})")
         
     except asyncio.TimeoutError:
         logger.error("Backend computation timed out")
@@ -321,12 +379,26 @@ async def compute_rusle(request: schemas.RUSLERequest) -> schemas.RUSLEResponse:
             ),
             
             # Optional tile URLs (normalized)
-            tile_urls=tile_urls_normalized
+            tile_urls=tile_urls_normalized,
+            
+            # ML Model Predictions
+            crop_yield=(
+                schemas.CropYieldPrediction(**crop_result)
+                if crop_result else None
+            ),
+            carbon_sequestration=(
+                schemas.CarbonSequestration(**carbon_result)
+                if carbon_result else None
+            )
         )
         
         logger.info(f"✅ RUSLE computation completed in {computation_time:.2f}s")
         logger.info(f"   Mean erosion: {response.erosion.mean:.1f} t/ha/yr")
         logger.info(f"   Hotspots: {response.num_hotspots}")
+        if response.crop_yield and response.crop_yield.yield_t_ha:
+            logger.info(f"   Crop yield: {response.crop_yield.yield_t_ha} t/ha")
+        if response.carbon_sequestration and response.carbon_sequestration.carbon_rate_mg_ha_yr:
+            logger.info(f"   Carbon rate: {response.carbon_sequestration.carbon_rate_mg_ha_yr} Mg C/ha/yr")
         
         return response
         

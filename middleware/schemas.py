@@ -338,6 +338,77 @@ class ValidationMetrics(BaseModel):
         }
 
 
+class CropYieldPrediction(BaseModel):
+    """
+    Crop yield prediction results from crop_predict model
+    """
+    yield_t_ha: Optional[float] = Field(
+        None,
+        description="Predicted crop yield in tonnes per hectare"
+    )
+    crop_name: str = Field(..., description="Crop type predicted")
+    location: List[float] = Field(..., description="Centroid coordinates [lon, lat]")
+    week: int = Field(..., description="Week of year used for prediction")
+    coverage: str = Field(
+        ...,
+        description="Coverage status: 'europe', 'out_of_coverage', 'unavailable', or 'error'"
+    )
+    error: Optional[str] = Field(None, description="Error message if prediction failed")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "yield_t_ha": 7.2,
+                "crop_name": "Soft wheat",
+                "location": [0.28, 51.51],
+                "week": 25,
+                "coverage": "europe",
+                "error": None
+            }
+        }
+
+
+class CarbonSequestration(BaseModel):
+    """
+    Carbon accumulation potential from GROA model
+    """
+    carbon_rate_mg_ha_yr: Optional[float] = Field(
+        None,
+        description="Carbon accumulation rate in Mg C ha⁻¹ yr⁻¹"
+    )
+    location: List[float] = Field(..., description="Centroid coordinates [lon, lat]")
+    climate: Optional[Dict[str, float]] = Field(
+        None,
+        description="Climate data: annual_mean_temp_c and annual_mean_precip_mm"
+    )
+    soil: Optional[Dict[str, str]] = Field(
+        None,
+        description="Soil classification data"
+    )
+    coverage: str = Field(
+        ...,
+        description="Coverage status: 'global', 'fallback', 'unavailable', or 'error'"
+    )
+    error: Optional[str] = Field(None, description="Error message if prediction failed")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "carbon_rate_mg_ha_yr": 1.5514,
+                "location": [0.28, 51.51],
+                "climate": {
+                    "annual_mean_temp_c": 10.9,
+                    "annual_mean_precip_mm": 741.0
+                },
+                "soil": {
+                    "classification": "Luvisols"
+                },
+                "coverage": "global",
+                "error": None
+            }
+        }
+
+
 class RUSLEResponse(BaseModel):
     """
     Complete JSON response to frontend
@@ -384,6 +455,16 @@ class RUSLEResponse(BaseModel):
     tile_urls: Optional[Dict[str, str]] = Field(
         None,
         description="Map tile URLs for erosion risk overlay (GEE getMapId)"
+    )
+    
+    # ML Model Predictions
+    crop_yield: Optional[CropYieldPrediction] = Field(
+        None,
+        description="Crop yield prediction from crop_predict model (Europe only)"
+    )
+    carbon_sequestration: Optional[CarbonSequestration] = Field(
+        None,
+        description="Carbon accumulation potential from GROA model (Global)"
     )
     
     class Config:
