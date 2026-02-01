@@ -348,11 +348,6 @@ class CropYieldPrediction(BaseModel):
     )
     crop_name: str = Field(..., description="Crop type predicted")
     location: List[float] = Field(..., description="Centroid coordinates [lon, lat]")
-    week: int = Field(..., description="Week of year used for prediction")
-    coverage: str = Field(
-        ...,
-        description="Coverage status: 'europe', 'out_of_coverage', 'unavailable', or 'error'"
-    )
     error: Optional[str] = Field(None, description="Error message if prediction failed")
     
     class Config:
@@ -361,8 +356,6 @@ class CropYieldPrediction(BaseModel):
                 "yield_t_ha": 7.2,
                 "crop_name": "Soft wheat",
                 "location": [0.28, 51.51],
-                "week": 25,
-                "coverage": "europe",
                 "error": None
             }
         }

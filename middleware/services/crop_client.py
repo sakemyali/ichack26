@@ -38,8 +38,6 @@ async def predict_crop_yield(
             "yield_t_ha": float,  # tonnes per hectare
             "crop_name": str,
             "location": [lon, lat],
-            "week": int,
-            "coverage": str,  # "europe" or "out_of_coverage"
             "error": str  # if prediction failed
         }
     """
@@ -70,8 +68,6 @@ async def predict_crop_yield(
                 "yield_t_ha": None,
                 "crop_name": crop_name,
                 "location": [centroid_lon, centroid_lat],
-                "week": week,
-                "coverage": "out_of_coverage",
                 "error": "Location outside Europe coverage or model files missing"
             }
         
@@ -81,8 +77,6 @@ async def predict_crop_yield(
             "yield_t_ha": round(float(prediction), 2),
             "crop_name": crop_name,
             "location": [centroid_lon, centroid_lat],
-            "week": week,
-            "coverage": "europe",
             "error": None
         }
         
@@ -92,8 +86,6 @@ async def predict_crop_yield(
             "yield_t_ha": None,
             "crop_name": crop_name,
             "location": [centroid_lon, centroid_lat],
-            "week": week,
-            "coverage": "unavailable",
             "error": f"Crop prediction module not available: {str(e)}"
         }
     
@@ -103,7 +95,5 @@ async def predict_crop_yield(
             "yield_t_ha": None,
             "crop_name": crop_name,
             "location": [centroid_lon, centroid_lat],
-            "week": week,
-            "coverage": "error",
             "error": str(e)
         }
