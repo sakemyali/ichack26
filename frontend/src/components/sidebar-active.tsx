@@ -9,6 +9,8 @@ import type { BackendResponse } from "@/lib/types";
 interface SidebarActiveProps {
     data?: BackendResponse;
     area: string;
+    isOcean: boolean;
+    hasCountry: boolean;
 }
 
 function getErosionGrade(meanErosion: number): { grade: string; variant: "default" | "secondary" | "destructive" | "outline" } {
@@ -19,7 +21,7 @@ function getErosionGrade(meanErosion: number): { grade: string; variant: "defaul
 }
 
 
-export function SidebarActive({ data, area }: SidebarActiveProps) {
+export function SidebarActive({ data, area, isOcean, hasCountry }: SidebarActiveProps) {
     if (!data) {
         return (
             <EmptySidebar
@@ -31,6 +33,9 @@ export function SidebarActive({ data, area }: SidebarActiveProps) {
     }
     const erosionGrade = getErosionGrade(data.erosion.mean);
     const coordinates = data.polygon_metadata.centroid;
+    
+    // Show RUSLE only if it's not ocean AND has a valid country
+    const showRUSLE = !isOcean && hasCountry;
 
     console.log(`Coordinates hereeere: ${coordinates}`)
 
@@ -113,13 +118,14 @@ export function SidebarActive({ data, area }: SidebarActiveProps) {
                     </Card>
                 )}
 
-                {/* Soil Erosion Assessment */}
-                <Card className="mb-4">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm">Soil Erosion Assessment (RUSLE)</CardTitle>
-                        <CardDescription className="text-xs">Revised Universal Soil Loss Equation</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                {/* Soil Erosion Assessment - Only show for land areas with valid country */}
+                {showRUSLE && (
+                    <Card className="mb-4">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm">Soil Erosion Assessment (RUSLE)</CardTitle>
+                            <CardDescription className="text-xs">Revised Universal Soil Loss Equation</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-muted-foreground">Overall Erosion Grade</span>
@@ -228,6 +234,7 @@ export function SidebarActive({ data, area }: SidebarActiveProps) {
                         </div>
                     </CardContent>
                 </Card>
+                )}
 
                 {/* Crop Yield */}
                 {data.crop_yield && !data.crop_yield.error && data.crop_yield.yield_t_ha != null && (

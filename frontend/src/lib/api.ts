@@ -6,11 +6,13 @@ function getCentroid(coords: PolygonCoords) {
     return { lat, lon };
 }
 
-function getBestName(address: OSMAddress) {
+function getBestName(address: OSMAddress, isOcean: boolean) {
+    // If it's ocean/sea, prioritize showing that instead of country
+    if (isOcean) {
+        return address.ocean || address.sea || "Ocean";
+    }
     return (
         address.country ||
-        address.ocean ||
-        address.sea ||
         "???"
     );
 }
@@ -27,7 +29,12 @@ export async function fetchAreaName(coords: PolygonCoords) {
     const data = await res.json();
 
     console.log(data.address);
-    return getBestName(data.address || {});
+    const address = data.address || {};
+    // Check if it's ocean/sea - if these fields exist, it's a water body
+    const isOcean = !!(address.ocean || address.sea);
+    // Check if we have a valid country
+    const hasCountry = !!address.country;
+    return { name: getBestName(address, isOcean), isOcean, hasCountry };
 }
 
 export async function sendPolygonToBackend(coords: PolygonCoords): Promise<BackendResponse> {
